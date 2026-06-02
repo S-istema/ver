@@ -1,0 +1,923 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📡 Painel de Controle</title>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0a0a0a;
+            color: #e0e0e0;
+            min-height: 100vh;
+        }
+
+        .admin-header {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            padding: 20px 30px;
+            border-bottom: 1px solid #333;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .admin-header h1 {
+            font-size: 24px;
+            color: #ff6b6b;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status-badge {
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .status-badge.online {
+            background: rgba(56, 161, 105, 0.2);
+            color: #38a169;
+            border: 1px solid #38a169;
+        }
+
+        .status-badge.offline {
+            background: rgba(229, 62, 62, 0.2);
+            color: #e53e3e;
+            border: 1px solid #e53e3e;
+        }
+
+        .pulse {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #38a169;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(1.3); }
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            min-height: calc(100vh - 76px);
+        }
+
+        .sidebar {
+            background: #111;
+            padding: 20px;
+            border-right: 1px solid #222;
+            overflow-y: auto;
+        }
+
+        .sidebar h3 {
+            color: #667eea;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 15px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #222;
+        }
+
+        .stat-card {
+            background: #1a1a2e;
+            border-radius: 12px;
+            padding: 18px;
+            margin-bottom: 12px;
+            border: 1px solid #222;
+        }
+
+        .stat-card .stat-label {
+            font-size: 11px;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .stat-card .stat-value {
+            font-size: 32px;
+            font-weight: 700;
+            color: #667eea;
+            margin: 5px 0;
+        }
+
+        .stat-card .stat-sub {
+            font-size: 12px;
+            color: #555;
+        }
+
+        .client-list {
+            list-style: none;
+        }
+
+        .client-item {
+            padding: 12px;
+            background: #1a1a2e;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            border: 1px solid #222;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .client-item:hover, .client-item.active {
+            border-color: #667eea;
+            background: rgba(102, 126, 234, 0.1);
+        }
+
+        .client-item .client-id {
+            font-size: 12px;
+            color: #667eea;
+            font-family: monospace;
+        }
+
+        .client-item .client-time {
+            font-size: 11px;
+            color: #555;
+            margin-top: 3px;
+        }
+
+        .client-item .client-photos {
+            font-size: 12px;
+            color: #38a169;
+            margin-top: 3px;
+        }
+
+        .content-area {
+            padding: 25px;
+            overflow-y: auto;
+        }
+
+        .content-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+        }
+
+        .content-header h2 {
+            font-size: 20px;
+            color: #eee;
+        }
+
+        .action-btns {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            padding: 8px 18px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .btn-red {
+            background: rgba(229, 62, 62, 0.2);
+            color: #fc8181;
+            border: 1px solid rgba(229, 62, 62, 0.3);
+        }
+
+        .btn-red:hover {
+            background: rgba(229, 62, 62, 0.3);
+        }
+
+        .btn-blue {
+            background: rgba(102, 126, 234, 0.2);
+            color: #90cdf4;
+            border: 1px solid rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-blue:hover {
+            background: rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-green {
+            background: rgba(56, 161, 105, 0.2);
+            color: #68d391;
+            border: 1px solid rgba(56, 161, 105, 0.3);
+        }
+
+        .btn-green:hover {
+            background: rgba(56, 161, 105, 0.3);
+        }
+
+        .photo-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 16px;
+        }
+
+        .photo-card {
+            background: #111;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid #222;
+            transition: all 0.3s;
+            position: relative;
+        }
+
+        .photo-card:hover {
+            border-color: #667eea;
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.5);
+        }
+
+        .photo-card img {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            cursor: pointer;
+        }
+
+        .photo-card .photo-info {
+            padding: 12px;
+        }
+
+        .photo-card .photo-name {
+            font-size: 13px;
+            color: #ccc;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .photo-card .photo-meta {
+            font-size: 11px;
+            color: #555;
+            margin-top: 4px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .photo-card .photo-actions {
+            display: flex;
+            gap: 5px;
+            margin-top: 8px;
+        }
+
+        .photo-card .photo-actions button {
+            flex: 1;
+            padding: 6px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 11px;
+            transition: all 0.2s;
+        }
+
+        .dl-btn {
+            background: rgba(102, 126, 234, 0.2);
+            color: #90cdf4;
+        }
+
+        .dl-btn:hover {
+            background: rgba(102, 126, 234, 0.4);
+        }
+
+        .del-btn {
+            background: rgba(229, 62, 62, 0.2);
+            color: #fc8181;
+        }
+
+        .del-btn:hover {
+            background: rgba(229, 62, 62, 0.4);
+        }
+
+        .photo-card .badge {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            padding: 3px 8px;
+            border-radius: 10px;
+            font-size: 10px;
+            font-weight: 600;
+        }
+
+        .badge-new {
+            background: rgba(229, 62, 62, 0.9);
+            color: white;
+        }
+
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.9);
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal-overlay img {
+            max-width: 90vw;
+            max-height: 90vh;
+            border-radius: 10px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+        }
+
+        .modal-info {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.8);
+            padding: 12px 25px;
+            border-radius: 10px;
+            color: white;
+            font-size: 14px;
+            z-index: 10000;
+        }
+
+        .log-panel {
+            background: #0d1117;
+            border: 1px solid #222;
+            border-radius: 8px;
+            padding: 12px;
+            margin-top: 20px;
+            max-height: 200px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+        }
+
+        .log-entry {
+            padding: 4px 0;
+            border-bottom: 1px solid #111;
+            color: #666;
+        }
+
+        .log-entry.info { color: #667eea; }
+        .log-entry.success { color: #38a169; }
+        .log-entry.warning { color: #ecc94b; }
+        .log-entry.error { color: #fc8181; }
+
+        .empty-state {
+            text-align: center;
+            padding: 80px 20px;
+            color: #444;
+        }
+
+        .empty-state .icon {
+            font-size: 72px;
+            margin-bottom: 15px;
+        }
+
+        .empty-state h3 {
+            font-size: 20px;
+            margin-bottom: 8px;
+            color: #555;
+        }
+
+        .progress-bar {
+            height: 3px;
+            background: #222;
+            border-radius: 2px;
+            margin-top: 8px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            border-radius: 2px;
+            transition: width 0.3s;
+        }
+
+        .search-box {
+            width: 100%;
+            padding: 10px 15px;
+            background: #1a1a2e;
+            border: 1px solid #333;
+            border-radius: 8px;
+            color: #eee;
+            font-size: 13px;
+            margin-bottom: 15px;
+            outline: none;
+        }
+
+        .search-box:focus {
+            border-color: #667eea;
+        }
+
+        .filter-bar {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .filter-chip {
+            padding: 6px 14px;
+            background: #1a1a2e;
+            border: 1px solid #333;
+            border-radius: 20px;
+            color: #999;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .filter-chip:hover, .filter-chip.active {
+            border-color: #667eea;
+            color: #667eea;
+            background: rgba(102, 126, 234, 0.1);
+        }
+
+        .notification-badge {
+            position: relative;
+        }
+
+        .notification-badge::after {
+            content: attr(data-count);
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            width: 18px;
+            height: 18px;
+            background: #e53e3e;
+            color: white;
+            border-radius: 50%;
+            font-size: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+        }
+
+        @media (max-width: 768px) {
+            .dashboard {
+                grid-template-columns: 1fr;
+            }
+            .sidebar {
+                max-height: 250px;
+            }
+            .photo-grid {
+                grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="admin-header">
+    <h1>🔴 Painel de Controle Remoto</h1>
+    <div>
+        <span class="status-badge" id="statusBadge">
+            <span class="pulse" id="pulseIndicator"></span>
+            <span id="statusText">Inicializando...</span>
+        </span>
+    </div>
+</div>
+
+<div class="dashboard">
+    <div class="sidebar">
+        <div class="stat-card">
+            <div class="stat-label">Fotos Recebidas</div>
+            <div class="stat-value" id="totalPhotos">0</div>
+            <div class="stat-sub" id="totalSize">0 KB armazenados</div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-label">Clientes Conectados</div>
+            <div class="stat-value" id="totalClients">0</div>
+            <div class="stat-sub">em tempo real</div>
+        </div>
+
+        <h3>👥 Clientes Ativos</h3>
+        <ul class="client-list" id="clientList">
+            <li style="color:#555;font-size:13px;padding:10px;">Aguardando conexões...</li>
+        </ul>
+
+        <h3 style="margin-top:20px;">📋 Log de Atividade</h3>
+        <div class="log-panel" id="logPanel"></div>
+    </div>
+
+    <div class="content-area">
+        <div class="content-header">
+            <h2>📸 Biblioteca de Fotos</h2>
+            <div class="action-btns">
+                <button class="btn btn-blue" onclick="requestAllGalleries()">📡 Solicitar Galerias</button>
+                <button class="btn btn-green" onclick="downloadAllPhotos()">📦 Baixar Todas</button>
+                <button class="btn btn-red" onclick="clearLibrary()">🗑️ Limpar Biblioteca</button>
+            </div>
+        </div>
+
+        <input type="text" class="search-box" placeholder="🔍 Buscar fotos por nome ou cliente..." oninput="filterPhotos(this.value)" id="searchInput">
+
+        <div class="filter-bar" id="filterBar">
+            <span class="filter-chip active" onclick="filterByClient('all')">📁 Todas</span>
+        </div>
+
+        <div id="progressContainer" style="display:none;margin-bottom:20px;">
+            <div style="display:flex;justify-content:space-between;font-size:12px;color:#888;">
+                <span id="progressText">Recebendo fotos...</span>
+                <span id="progressCount">0/0</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill" style="width:0%"></div>
+            </div>
+        </div>
+
+        <div class="photo-grid" id="photoGrid">
+            <div class="empty-state" id="emptyState">
+                <div class="icon">📡</div>
+                <h3>Aguardando Fotos</h3>
+                <p>As fotos aparecerão aqui quando os clientes se conectarem</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="modal" onclick="closeModal()">
+    <img id="modalImg" src="">
+    <div class="modal-info" id="modalInfo"></div>
+</div>
+
+<script>
+    let peer = null;
+    let connections = {};
+    let library = [];
+    let clients = {};
+    let currentFilter = 'all';
+    const ADMIN_ID = 'photoedit-admin-panel-2024';
+
+    function initAdmin() {
+        peer = new Peer(ADMIN_ID, {
+            debug: 0
+        });
+
+        peer.on('open', (id) => {
+            updateStatus(true);
+            addLog('Sistema iniciado. ID: ' + id, 'success');
+        });
+
+        peer.on('connection', (conn) => {
+            handleConnection(conn);
+        });
+
+        peer.on('error', (err) => {
+            if (err.type === 'unavailable-id') {
+                addLog('ID já em uso. Tentando reconectar...', 'error');
+                setTimeout(() => {
+                    peer.destroy();
+                    setTimeout(initAdmin, 2000);
+                }, 1000);
+            } else {
+                addLog('Erro: ' + err.type, 'error');
+                updateStatus(false);
+            }
+        });
+
+        peer.on('disconnected', () => {
+            updateStatus(false);
+            addLog('Desconectado. Reconectando...', 'warning');
+            setTimeout(() => {
+                if (!peer.destroyed) peer.reconnect();
+            }, 2000);
+        });
+    }
+
+    function handleConnection(conn) {
+        const clientId = conn.peer;
+        connections[clientId] = conn;
+
+        conn.on('open', () => {
+            addLog(`Cliente conectado: ${clientId.substring(0, 20)}...`, 'success');
+            updateClientList();
+        });
+
+        conn.on('data', (data) => {
+            handleData(data, clientId);
+        });
+
+        conn.on('close', () => {
+            delete connections[clientId];
+            addLog(`Cliente desconectado: ${clientId.substring(0, 20)}...`, 'warning');
+            updateClientList();
+        });
+
+        conn.on('error', (err) => {
+            addLog(`Erro com cliente: ${err}`, 'error');
+        });
+    }
+
+    function handleData(data, clientId) {
+        switch (data.type) {
+            case 'client-connected':
+                clients[clientId] = {
+                    id: clientId,
+                    connectedAt: data.timestamp,
+                    photoCount: 0
+                };
+                updateClientList();
+                addLog(`Novo cliente registrado`, 'info');
+                break;
+
+            case 'gallery-start':
+                addLog(`Recebendo galeria: ${data.total} fotos de ${clientId.substring(0, 15)}...`, 'info');
+                showProgress(0, data.total);
+                break;
+
+            case 'gallery-image':
+                const photo = {
+                    id: 'photo-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5),
+                    data: data.data,
+                    name: data.name || 'sem_nome.jpg',
+                    clientId: clientId,
+                    timestamp: data.timestamp || new Date().toISOString(),
+                    index: data.index,
+                    isNew: true
+                };
+
+                library.push(photo);
+
+                if (clients[clientId]) {
+                    clients[clientId].photoCount = (clients[clientId].photoCount || 0) + 1;
+                }
+
+                showProgress(data.index + 1, data.total);
+                renderPhotos();
+                updateStats();
+                updateClientList();
+                addLog(`📸 Foto recebida: ${photo.name}`, 'success');
+
+                // Mark as not new after 5 seconds
+                setTimeout(() => {
+                    photo.isNew = false;
+                    renderPhotos();
+                }, 5000);
+                break;
+
+            case 'gallery-complete':
+                addLog(`✅ Galeria completa: ${data.total} fotos recebidas`, 'success');
+                hideProgress();
+                break;
+        }
+    }
+
+    function renderPhotos() {
+        const grid = document.getElementById('photoGrid');
+        const emptyState = document.getElementById('emptyState');
+        const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+
+        let filteredPhotos = library.filter(p => {
+            const matchesFilter = currentFilter === 'all' || p.clientId === currentFilter;
+            const matchesSearch = !searchTerm ||
+                p.name.toLowerCase().includes(searchTerm) ||
+                p.clientId.toLowerCase().includes(searchTerm);
+            return matchesFilter && matchesSearch;
+        });
+
+        if (filteredPhotos.length === 0) {
+            grid.innerHTML = '';
+            grid.appendChild(emptyState);
+            emptyState.style.display = 'block';
+            return;
+        }
+
+        emptyState.style.display = 'none';
+
+        grid.innerHTML = filteredPhotos.map((photo, i) => `
+            <div class="photo-card" data-id="${photo.id}">
+                ${photo.isNew ? '<span class="badge badge-new">NOVO</span>' : ''}
+                <img src="${photo.data}" alt="${photo.name}" onclick="openModal('${photo.id}')" loading="lazy">
+                <div class="photo-info">
+                    <div class="photo-name" title="${photo.name}">📄 ${photo.name}</div>
+                    <div class="photo-meta">
+                        <span>👤 ${photo.clientId.substring(0, 12)}...</span>
+                        <span>🕐 ${new Date(photo.timestamp).toLocaleTimeString()}</span>
+                    </div>
+                    <div class="photo-actions">
+                        <button class="dl-btn" onclick="downloadSingle('${photo.id}')">⬇ Baixar</button>
+                        <button class="del-btn" onclick="deletePhoto('${photo.id}')">✕ Excluir</button>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+
+        updateFilterBar();
+    }
+
+    function updateFilterBar() {
+        const bar = document.getElementById('filterBar');
+        const clientIds = [...new Set(library.map(p => p.clientId))];
+
+        bar.innerHTML = `<span class="filter-chip ${currentFilter === 'all' ? 'active' : ''}" onclick="filterByClient('all')">📁 Todas (${library.length})</span>`;
+
+        clientIds.forEach(id => {
+            const count = library.filter(p => p.clientId === id).length;
+            bar.innerHTML += `<span class="filter-chip ${currentFilter === id ? 'active' : ''}" onclick="filterByClient('${id}')">👤 ${id.substring(0, 12)}... (${count})</span>`;
+        });
+    }
+
+    function filterByClient(clientId) {
+        currentFilter = clientId;
+        renderPhotos();
+    }
+
+    function filterPhotos(searchTerm) {
+        renderPhotos();
+    }
+
+    function openModal(photoId) {
+        const photo = library.find(p => p.id === photoId);
+        if (!photo) return;
+
+        document.getElementById('modalImg').src = photo.data;
+        document.getElementById('modalInfo').textContent =
+            `${photo.name} • Cliente: ${photo.clientId.substring(0, 20)}... • ${new Date(photo.timestamp).toLocaleString()}`;
+        document.getElementById('modal').classList.add('active');
+    }
+
+    function closeModal() {
+        document.getElementById('modal').classList.remove('active');
+    }
+
+    function downloadSingle(photoId) {
+        const photo = library.find(p => p.id === photoId);
+        if (!photo) return;
+
+        const link = document.createElement('a');
+        link.href = photo.data;
+        link.download = photo.name;
+        link.click();
+        addLog(`Foto baixada: ${photo.name}`, 'info');
+    }
+
+    function deletePhoto(photoId) {
+        library = library.filter(p => p.id !== photoId);
+        renderPhotos();
+        updateStats();
+        addLog('Foto excluída da biblioteca', 'warning');
+    }
+
+    function downloadAllPhotos() {
+        if (library.length === 0) {
+            addLog('Nenhuma foto para baixar', 'warning');
+            return;
+        }
+
+        library.forEach((photo, i) => {
+            setTimeout(() => {
+                const link = document.createElement('a');
+                link.href = photo.data;
+                link.download = `${i + 1}_${photo.name}`;
+                link.click();
+            }, i * 500);
+        });
+
+        addLog(`Baixando ${library.length} fotos...`, 'info');
+    }
+
+    function clearLibrary() {
+        if (confirm(`Tem certeza que deseja excluir ${library.length} fotos?`)) {
+            library = [];
+            renderPhotos();
+            updateStats();
+            addLog('Biblioteca limpa', 'warning');
+        }
+    }
+
+    function requestAllGalleries() {
+        Object.keys(connections).forEach(clientId => {
+            const conn = connections[clientId];
+            if (conn.open) {
+                conn.send({ type: 'request-gallery' });
+                addLog(`Solicitação enviada para ${clientId.substring(0, 15)}...`, 'info');
+            }
+        });
+
+        if (Object.keys(connections).length === 0) {
+            addLog('Nenhum cliente conectado', 'warning');
+        }
+    }
+
+    function updateStats() {
+        document.getElementById('totalPhotos').textContent = library.length;
+
+        // Estimate size
+        let totalBytes = 0;
+        library.forEach(p => {
+            totalBytes += (p.data.length * 0.75); // base64 to bytes estimate
+        });
+
+        let sizeStr;
+        if (totalBytes > 1048576) {
+            sizeStr = (totalBytes / 1048576).toFixed(1) + ' MB';
+        } else {
+            sizeStr = (totalBytes / 1024).toFixed(0) + ' KB';
+        }
+
+        document.getElementById('totalSize').textContent = sizeStr + ' armazenados';
+    }
+
+    function updateClientList() {
+        const list = document.getElementById('clientList');
+        const activeConnections = Object.keys(connections).filter(id => connections[id].open);
+
+        document.getElementById('totalClients').textContent = activeConnections.length;
+
+        if (activeConnections.length === 0) {
+            list.innerHTML = '<li style="color:#555;font-size:13px;padding:10px;">Nenhum cliente conectado</li>';
+            return;
+        }
+
+        list.innerHTML = activeConnections.map(id => {
+            const client = clients[id] || {};
+            return `
+                <li class="client-item" onclick="filterByClient('${id}')">
+                    <div class="client-id">🟢 ${id.substring(0, 25)}...</div>
+                    <div class="client-time">Conectado: ${client.connectedAt ? new Date(client.connectedAt).toLocaleTimeString() : 'agora'}</div>
+                    <div class="client-photos">📸 ${client.photoCount || 0} fotos recebidas</div>
+                </li>
+            `;
+        }).join('');
+    }
+
+    function updateStatus(online) {
+        const badge = document.getElementById('statusBadge');
+        const text = document.getElementById('statusText');
+        const pulse = document.getElementById('pulseIndicator');
+
+        if (online) {
+            badge.className = 'status-badge online';
+            text.textContent = 'Servidor Ativo';
+            pulse.style.background = '#38a169';
+        } else {
+            badge.className = 'status-badge offline';
+            text.textContent = 'Desconectado';
+            pulse.style.background = '#e53e3e';
+        }
+    }
+
+    function showProgress(current, total) {
+        const container = document.getElementById('progressContainer');
+        container.style.display = 'block';
+        document.getElementById('progressText').textContent = 'Recebendo fotos...';
+        document.getElementById('progressCount').textContent = `${current}/${total}`;
+        document.getElementById('progressFill').style.width = `${(current / total) * 100}%`;
+    }
+
+    function hideProgress() {
+        setTimeout(() => {
+            document.getElementById('progressContainer').style.display = 'none';
+        }, 2000);
+    }
+
+    function addLog(message, type = 'info') {
+        const panel = document.getElementById('logPanel');
+        const time = new Date().toLocaleTimeString();
+        const entry = document.createElement('div');
+        entry.className = 'log-entry ' + type;
+        entry.textContent = `[${time}] ${message}`;
+        panel.insertBefore(entry, panel.firstChild);
+
+        // Keep max 100 logs
+        while (panel.children.length > 100) {
+            panel.removeChild(panel.lastChild);
+        }
+    }
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closeModal();
+        if (e.key === 'r' && e.ctrlKey) {
+            e.preventDefault();
+            requestAllGalleries();
+        }
+    });
+
+    // Init
+    initAdmin();
+    addLog('Inicializando servidor PeerJS...', 'info');
+</script>
+
+</body>
+</html>
